@@ -19,6 +19,12 @@ pub mod severe;
 pub mod stability;
 pub mod wind;
 
+#[cfg(feature = "fluids")]
+pub mod coupling;
+
+#[cfg(feature = "thermo")]
+pub mod thermal;
+
 #[cfg(feature = "logging")]
 pub mod logging;
 

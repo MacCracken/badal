@@ -2,54 +2,44 @@
 
 ## [Unreleased]
 
-### Added
-- **precipitation** — new module: `PrecipitationType` enum (None/Drizzle/Rain/Snow/Sleet/FreezingRain/Hail), `Intensity` enum (None/Light/Moderate/Heavy/Violent), `rain_rate()` from cloud type + CAPE, `precipitation_type()` from surface conditions, `classify_intensity()` (WMO thresholds), `accumulation()`, `snow_accumulation()` with temperature-dependent SLR, `snow_liquid_ratio()`, `freezing_level()`
-- **radiation** — new module: solar geometry (`solar_declination`, `hour_angle`, `solar_zenith_angle`), shortwave (`clear_sky_irradiance`, `cloud_attenuated_irradiance` via Kasten & Czeplak 1980), longwave (`longwave_emission`, `atmospheric_longwave`), energy balance (`net_radiation`, `diurnal_temperature_range`, `equilibrium_temperature`), constants (`SOLAR_CONSTANT`, `STEFAN_BOLTZMANN`, `EARTH_ALBEDO`, `CLEAR_SKY_TRANSMISSIVITY`, `ATMOSPHERIC_EMISSIVITY`)
-- **mesoscale** — new module: `sea_land_breeze()` thermal circulation, `sea_breeze_penetration_km()`, `katabatic_wind()` / `anabatic_wind()` slope flows, `valley_wind_phase()` diurnal cycle, `urban_heat_island()` Oke (1973) with wind/cloud modifiers, `canyon_temperature_excess()` sky view factor amplification
-- **severe** — new module: `supercell_composite()` (SCP), `significant_tornado()` (STP), `derecho_composite()` (DCP), `bulk_richardson_number()` (BRN), `energy_helicity_index()` (EHI), `ThreatLevel` enum (None/Marginal/Slight/Enhanced/Moderate/High) with `classify_threat()`
-- **atmosphere** — `virtual_temperature()`, `potential_temperature()`, `pressure_altitude()` (inverse ISA), `density_altitude()`
-- **radiation** — `day_length()`, `sunrise_sunset()` from latitude + declination
-- **stability** — `total_totals()` index, `cin_simple()` convective inhibition, `moist_adiabatic_lapse_rate()` as f(T,P), `brunt_vaisala_squared()` static stability
-- **wind** — `wind_direction()` from u/v (meteorological convention), `wind_speed()` from u/v, `log_wind_profile()` height extrapolation
-- **precipitation** — Stratus drizzle rain rate (0.3 mm/hr)
-- Tests: 86 → 235 (228 unit + 7 integration), benchmarks: 14 → 27
+## [1.0.0] - 2026-03-26
 
-### Changed
-- **atmosphere** — `R_AIR` corrected from 287.058 to 287.052_87 (precise ICAO value)
-- **atmosphere** — documented ISA valid range (0–20 km) on `standard_temperature` and `standard_pressure`
-- **atmosphere** — `AtmosphericState` fields are now private; use `new()` for validated construction or getters (`temperature_k()`, `pressure_pa()`, `humidity_percent()`, `altitude_m()`) for access
-- **moisture** — unified Magnus-Tetens coefficients to Bolton (1980): a=17.67, b=243.5, e₀=611.2 Pa across both `saturation_vapor_pressure` and `dew_point`
-- **moisture** — `heat_index()` now implements full NWS algorithm with low-humidity and high-humidity adjustment terms; RH<40% guard removed (was incorrectly skipping valid heat index conditions)
-- **moisture** — `dew_point()` moved from `atmosphere` module to `moisture` module where it belongs
-- **moisture** — `dew_point()` now returns `Option<f64>`, returning `None` for invalid humidity (≤0% or >100%) instead of panicking on ln(0)
-- **cloud** — added `Display` impl for `CloudType`
-- **atmosphere** — added `PartialEq` derive on `AtmosphericState`
-- **stability** — fixed doc comments on `StabilityClass` variants to match actual code behavior
-- **pressure** — clarified `barometric_pressure` doc: isothermal approximation vs ISA
-- **logging** — `init()` now uses `try_init()` — safe to call multiple times without panicking
+Stable release. All pre-1.0 milestones complete.
 
-### Fixed
-- **stability** — neutral classification tolerance narrowed from 0.001 to 0.0003 °C/m (was classifying superadiabatic lapse rates as neutral)
-- **radiation** — DTR mixing layer corrected from 100m to 1000m (was overestimating diurnal range ~8x)
-- **precipitation** — hail detection no longer requires surface wet-bulb ≤ 0°C (hail commonly falls in warm conditions)
-- **cloud** — `produces_precipitation()` now includes Stratus (drizzle producer)
-- **severe** — SCP normalization corrected to SPC conventions: SRH/50 (was /100), shear/40 (was /20)
-- **severe** — STP shear normalization corrected: BWD/12 (was /20) per Thompson et al. (2012)
-- **pressure** — doc comment corrected: "hypsometric equation" → "exponential barometric formula"
-- **mesoscale** — valley wind phase comment: peak corrected from 14:00 to 15:00
-- **pressure** — removed unused `SEA_LEVEL_PRESSURE` import (clippy)
-- **moisture** — removed unnecessary `let` binding in `heat_index` (clippy)
-- Formatting issues across all source files
+### Modules
 
-### Added
-- **atmosphere** — `AtmosphericState::new()` validated constructor rejecting invalid temperature (≤0K), pressure (<0), humidity (outside [0,100])
-- Missing `#[inline]` on hot-path functions: `classify_stability`, `cape_simple`, `barometric_pressure`, `heat_index`, `wet_bulb_temperature`
-- Doc comment on `logging::init()`
-- Tests: constructor validation, stratosphere pressure, `AtmosphericState::at_altitude`, serde round-trips (AtmosphericState, CloudType, StabilityClass), `air_density` edge cases, `cape_simple` zero-temp edge, `altimeter_setting`, `geostrophic_wind_speed` zero-coriolis, `thermal_wind_shear` (positive/zero-coriolis/zero-gradient), `wet_bulb_temperature` extremes, `dew_point` validation, end-to-end weather profile integration test
-- Benchmarks: `standard_pressure`, `air_density`, `dew_point`, `heat_index`, `wet_bulb_temperature`, `wind_chill`, `barometric_pressure`, `classify_stability`, `cape_simple`
-- `docs/architecture/math.md` — complete mathematical reference with formulas and sources
-- Tests: 45 → 86 (79 unit + 7 integration), coverage 95.18%
-- Benchmarks: 5 → 14
+| Module | Feature | Description |
+|--------|---------|-------------|
+| **atmosphere** | default | ISA model (0–20 km), AtmosphericState (validated), air density, virtual/potential temperature, pressure/density altitude |
+| **pressure** | default | Barometric formula, pressure gradient force, geostrophic wind, sea level correction, altimeter setting |
+| **moisture** | default | Saturation VP (Bolton 1980), dew point, mixing ratio, humidity, heat index (NWS), wet bulb (Stull) |
+| **cloud** | default | 10 CloudType variants with Display, cloud base altitude, LCL, precipitation classification |
+| **wind** | default | Coriolis, wind chill (NWS), Beaufort scale, thermal wind shear, wind direction/speed from u/v, log wind profile |
+| **stability** | default | Dry/moist adiabatic lapse rates, CAPE, CIN, lifted index, K-index, Total Totals, Brunt-Väisälä, StabilityClass |
+| **precipitation** | default | Rain rate (Cb/Ns/St + CAPE), 7 PrecipitationType variants, WMO intensity, accumulation, snow SLR, freezing level |
+| **radiation** | default | Solar geometry (declination, zenith, hour angle), clear-sky + cloud irradiance (Kasten & Czeplak), longwave, net radiation, DTR, equilibrium temperature, day length, sunrise/sunset |
+| **mesoscale** | default | Sea/land breeze, katabatic/anabatic winds, valley wind phase, UHI (Oke 1973), canyon SVF |
+| **severe** | default | SCP (Thompson 2003), STP (Thompson 2012), DCP (Evans & Doswell), BRN, EHI, 6-tier ThreatLevel |
+| **coupling** | `fluids` | Pravash integration: atmospheric grid, Coriolis/PGF forcing, flood from rainfall, wind field extraction |
+| **thermal** | `thermo` | Ushma integration: surface energy balance, Penman-Monteith ET₀, sensible/latent/ground heat flux, radiative cooling |
+
+### Science Accuracy (P-1 hardening)
+- R_AIR corrected to ICAO precise value (287.052_87 J/(kg·K))
+- Magnus-Tetens unified to Bolton (1980): a=17.67, b=243.5, e₀=611.2 Pa
+- Heat index: full NWS Rothfusz regression with low/high humidity adjustments
+- SCP/STP normalizations corrected to SPC conventions (Thompson et al.)
+- Stability tolerance narrowed from 0.001 to 0.0003 °C/m
+- DTR mixing layer corrected from 100m to 1000m
+- Hail detection: surface wet-bulb guard removed (warm-season hail)
+- Stratus added to precipitation-producing clouds
+- ISA valid range documented (0–20 km)
+
+### Stats
+- 266 tests (259 unit + 7 integration), zero clippy warnings
+- 27 Criterion benchmarks with CSV history
+- 96.40% line coverage, 99.36% function coverage (cargo-llvm-cov)
+- Zero unwrap/panic in library code
+- API: `#[non_exhaustive]` on enums, `#[must_use]` on pure functions, `#[inline]` on hot paths
 
 ## [0.1.0] - 2026-03-25
 

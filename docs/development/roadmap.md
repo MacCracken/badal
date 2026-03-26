@@ -1,45 +1,42 @@
 # Badal Roadmap
 
-## Status
-**v0.1.0** — Initial scaffold with full meteorology suite.
+## V1.0.0 — Stable Release (2026-03-26)
 
-## Completed
+### Modules
+| Module | Feature | Description |
+|--------|---------|-------------|
+| atmosphere | default | ISA model, AtmosphericState, virtual/potential temp, pressure/density altitude |
+| pressure | default | Barometric formula, PGF, geostrophic wind, sea level correction |
+| moisture | default | Saturation VP, dew point, humidity, heat index (NWS), wet bulb (Stull) |
+| cloud | default | 10 cloud types, cloud base, LCL, precipitation classification |
+| wind | default | Coriolis, wind chill, Beaufort, thermal wind, wind direction, log profile |
+| stability | default | CAPE, CIN, lapse rates, lifted/K/TT indices, Brunt-Väisälä |
+| precipitation | default | Rain rate, 7 precip types, WMO intensity, snow SLR, freezing level |
+| radiation | default | Solar geometry, irradiance, longwave, net radiation, DTR, day length |
+| mesoscale | default | Sea/land breeze, katabatic/anabatic, valley wind, UHI, canyon SVF |
+| severe | default | SCP, STP, DCP, BRN, EHI, ThreatLevel |
+| coupling | `fluids` | Pravash atmospheric grid, Coriolis/PGF forcing, flood modeling |
+| thermal | `thermo` | Ushma surface energy balance, ET₀, heat fluxes, radiative cooling |
 
-### Precipitation
-- Rain rate estimation from cloud type + CAPE
-- Snow/hail prediction from temperature profile (wet bulb discriminator, SLR)
-- Precipitation accumulation model (liquid + snow)
-- Precipitation type classification (7 types)
-- Intensity classification (WMO thresholds)
-- Freezing level estimation
+### Stats
+- 266 tests (259 unit + 7 integration)
+- 27 Criterion benchmarks
+- 96.40% line coverage
+- Zero clippy warnings, cargo audit clean, cargo deny clean
+- Consumer smoke tests for kiran, joshua, pavan, goonj
 
-### Radiation Budget
-- Solar geometry (declination, hour angle, zenith angle)
-- Solar radiation at surface (clear sky + Kasten & Czeplak cloud attenuation)
-- Longwave radiation (Stefan-Boltzmann emission + atmospheric downwelling)
-- Net radiation balance
-- Diurnal temperature range from energy balance
-- Radiative equilibrium temperature
-
-### Mesoscale
-- Sea/land breeze model with front penetration
-- Mountain/valley wind (katabatic/anabatic) with diurnal phase
-- Urban heat island (Oke 1973) with wind/cloud modifiers + canyon amplification
-
-### Severe Weather
-- Supercell Composite Parameter (SCP)
-- Significant Tornado Parameter (STP)
-- Derecho Composite Parameter (DCP)
-- Bulk Richardson Number (BRN)
-- Energy-Helicity Index (EHI)
-- ThreatLevel classification (6-tier)
-
-## Future Features (demand-gated)
+## 1.1.0 — Demand-gated extensions
 
 ### Integration
-- ushma coupling: surface energy balance, evapotranspiration
-- pravash coupling: atmospheric flow simulation
-- bhava 1.5: weather conditions → agent mood/behavior modulation
+- [ ] bhava 1.5: weather conditions → agent mood/behavior modulation
 
-## v1.0.0 Criteria
-- API frozen, zero unwrap/panic, 90%+ coverage, benchmark golden numbers
+### Watch List
+| Item | Area |
+|------|------|
+| ISA layers above 20 km (stratosphere/mesosphere) | atmosphere |
+| Equivalent potential temperature (theta-e) | atmosphere |
+| Ice saturation / frost point | moisture |
+| Foehn/chinook winds | mesoscale |
+| SHIP (significant hail parameter) | severe |
+| Equation of time (clock → solar time) | radiation |
+| Spencer (1971) higher-accuracy declination | radiation |

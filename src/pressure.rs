@@ -1,9 +1,15 @@
-use crate::atmosphere::{G, R_AIR, SEA_LEVEL_PRESSURE};
+use crate::atmosphere::{G, R_AIR};
 
-/// Barometric pressure at altitude given sea-level pressure.
+/// Barometric pressure at altitude given sea-level pressure (isothermal approximation).
+///
+/// Uses the hypsometric equation assuming constant temperature through the layer.
+/// For ISA-accurate pressure, use [`crate::atmosphere::standard_pressure`] instead.
 #[must_use]
+#[inline]
 pub fn barometric_pressure(altitude_m: f64, sea_level_pressure: f64, temperature_k: f64) -> f64 {
-    if temperature_k <= 0.0 { return 0.0; }
+    if temperature_k <= 0.0 {
+        return 0.0;
+    }
     sea_level_pressure * (-G * altitude_m / (R_AIR * temperature_k)).exp()
 }
 
@@ -13,7 +19,9 @@ pub fn barometric_pressure(altitude_m: f64, sea_level_pressure: f64, temperature
 #[must_use]
 #[inline]
 pub fn pressure_gradient_force(dp_dx: f64, density: f64) -> f64 {
-    if density.abs() < f64::EPSILON { return 0.0; }
+    if density.abs() < f64::EPSILON {
+        return 0.0;
+    }
     -dp_dx / density
 }
 
@@ -24,7 +32,9 @@ pub fn pressure_gradient_force(dp_dx: f64, density: f64) -> f64 {
 #[inline]
 pub fn geostrophic_wind_speed(dp_dx: f64, density: f64, coriolis: f64) -> f64 {
     let denom = density * coriolis.abs();
-    if denom < f64::EPSILON { return 0.0; }
+    if denom < f64::EPSILON {
+        return 0.0;
+    }
     dp_dx.abs() / denom
 }
 
@@ -33,7 +43,9 @@ pub fn geostrophic_wind_speed(dp_dx: f64, density: f64, coriolis: f64) -> f64 {
 /// P_sl = P_station × exp(g × h / (R × T))
 #[must_use]
 pub fn sea_level_correction(station_pressure: f64, altitude_m: f64, temperature_k: f64) -> f64 {
-    if temperature_k <= 0.0 { return station_pressure; }
+    if temperature_k <= 0.0 {
+        return station_pressure;
+    }
     station_pressure * (G * altitude_m / (R_AIR * temperature_k)).exp()
 }
 
@@ -46,6 +58,7 @@ pub fn altimeter_setting(station_pressure: f64, field_elevation_m: f64, temperat
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::atmosphere::SEA_LEVEL_PRESSURE;
 
     #[test]
     fn barometric_at_sea_level() {
@@ -71,19 +84,46 @@ mod tests {
     fn geostrophic_wind_basic() {
         // Typical mid-latitude: dP/dx ~ 0.01 Pa/m, ρ=1.225, f=1e-4
         let v = geostrophic_wind_speed(0.01, 1.225, 1e-4);
-        assert!(v > 50.0 && v < 120.0, "geostrophic wind should be reasonable, got {v}");
+        assert!(
+            v > 50.0 && v < 120.0,
+            "geostrophic wind should be reasonable, got {v}"
+        );
     }
 
     #[test]
     fn sea_level_correction_increases_pressure() {
         let p_station = 95_000.0; // station at altitude
         let p_sl = sea_level_correction(p_station, 500.0, 280.0);
-        assert!(p_sl > p_station, "sea level pressure should be higher than station at altitude");
+        assert!(
+            p_sl > p_station,
+            "sea level pressure should be higher than station at altitude"
+        );
     }
 
     #[test]
     fn zero_altitude_no_correction() {
         let p = sea_level_correction(101_325.0, 0.0, 288.15);
         assert!((p - 101_325.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn geostrophic_wind_zero_coriolis() {
+        assert_eq!(geostrophic_wind_speed(0.01, 1.225, 0.0), 0.0);
+    }
+
+    #[test]
+    fn altimeter_setting_at_elevation() {
+        // Station at 500m should give QNH > station pressure
+        let qnh = altimeter_setting(95_000.0, 500.0, 280.0);
+        assert!(
+            qnh > 95_000.0,
+            "altimeter setting should exceed station pressure at elevation"
+        );
+    }
+
+    #[test]
+    fn altimeter_setting_at_sea_level() {
+        let qnh = altimeter_setting(101_325.0, 0.0, 288.15);
+        assert!((qnh - 101_325.0).abs() < 1.0);
     }
 }

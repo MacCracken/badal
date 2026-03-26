@@ -1,0 +1,28 @@
+test atmosphere/standard_temperature ... bench:           0 ns/iter (+/- 0)
+
+test atmosphere/standard_pressure ... bench:          14 ns/iter (+/- 0)
+
+test atmosphere/air_density ... bench:           1 ns/iter (+/- 0)
+
+test moisture/saturation_vapor_pressure ... bench:           5 ns/iter (+/- 0)
+
+test moisture/dew_point ... bench:           7 ns/iter (+/- 0)
+
+test moisture/heat_index ... bench:           3 ns/iter (+/- 0)
+
+test moisture/wet_bulb_temperature ... bench:          51 ns/iter (+/- 9)
+
+test wind/coriolis_parameter ... bench:           8 ns/iter (+/- 1)
+
+test wind/wind_chill ... bench:          13 ns/iter (+/- 1)
+
+test cloud/cloud_base_altitude ... bench:           0 ns/iter (+/- 0)
+
+test wind/beaufort_scale ... bench:           3 ns/iter (+/- 0)
+
+test pressure/barometric_pressure ... bench:           6 ns/iter (+/- 0)
+
+test stability/classify_stability ... bench:           1 ns/iter (+/- 0)
+
+test stability/cape_simple ... bench:           1 ns/iter (+/- 0)
+

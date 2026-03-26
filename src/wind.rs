@@ -48,7 +48,9 @@ pub fn beaufort_scale(wind_speed_ms: f64) -> u8 {
 #[must_use]
 #[inline]
 pub fn thermal_wind_shear(temp_gradient_k_per_m: f64, coriolis: f64) -> f64 {
-    if coriolis.abs() < f64::EPSILON { return 0.0; }
+    if coriolis.abs() < f64::EPSILON {
+        return 0.0;
+    }
     // Simplified: ΔV/Δz ≈ (g/fT) × (dT/dx)
     (9.81 / (coriolis.abs() * 280.0)) * temp_gradient_k_per_m.abs() * 1000.0
 }
@@ -60,7 +62,10 @@ mod tests {
     #[test]
     fn coriolis_at_45_degrees() {
         let f = coriolis_parameter(45.0_f64.to_radians());
-        assert!((f - 1.031e-4).abs() < 0.005e-4, "coriolis at 45° should be ~1.03e-4, got {f}");
+        assert!(
+            (f - 1.031e-4).abs() < 0.005e-4,
+            "coriolis at 45° should be ~1.03e-4, got {f}"
+        );
     }
 
     #[test]
@@ -72,7 +77,10 @@ mod tests {
     #[test]
     fn coriolis_at_pole() {
         let f = coriolis_parameter(90.0_f64.to_radians());
-        assert!((f - 1.4584e-4).abs() < 0.001e-4, "coriolis at pole should be ~1.46e-4, got {f}");
+        assert!(
+            (f - 1.4584e-4).abs() < 0.001e-4,
+            "coriolis at pole should be ~1.46e-4, got {f}"
+        );
     }
 
     #[test]
@@ -113,5 +121,26 @@ mod tests {
             let high = beaufort_scale((i + 1) as f64 * 2.5);
             assert!(high >= low, "Beaufort should be monotonically increasing");
         }
+    }
+
+    #[test]
+    fn thermal_wind_shear_positive() {
+        let f = coriolis_parameter(45.0_f64.to_radians());
+        let shear = thermal_wind_shear(1e-5, f);
+        assert!(
+            shear > 0.0,
+            "thermal wind shear should be positive, got {shear}"
+        );
+    }
+
+    #[test]
+    fn thermal_wind_shear_zero_coriolis() {
+        assert_eq!(thermal_wind_shear(1e-5, 0.0), 0.0);
+    }
+
+    #[test]
+    fn thermal_wind_shear_zero_gradient() {
+        let f = coriolis_parameter(45.0_f64.to_radians());
+        assert_eq!(thermal_wind_shear(0.0, f), 0.0);
     }
 }

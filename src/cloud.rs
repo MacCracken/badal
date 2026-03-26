@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Cloud classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -14,6 +15,23 @@ pub enum CloudType {
     Nimbostratus,
     Cirrostratus,
     Cirrocumulus,
+}
+
+impl fmt::Display for CloudType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Cumulus => write!(f, "Cumulus"),
+            Self::Stratus => write!(f, "Stratus"),
+            Self::Cirrus => write!(f, "Cirrus"),
+            Self::Cumulonimbus => write!(f, "Cumulonimbus"),
+            Self::Stratocumulus => write!(f, "Stratocumulus"),
+            Self::Altostratus => write!(f, "Altostratus"),
+            Self::Altocumulus => write!(f, "Altocumulus"),
+            Self::Nimbostratus => write!(f, "Nimbostratus"),
+            Self::Cirrostratus => write!(f, "Cirrostratus"),
+            Self::Cirrocumulus => write!(f, "Cirrocumulus"),
+        }
+    }
 }
 
 impl CloudType {
@@ -49,7 +67,9 @@ impl CloudType {
 #[inline]
 pub fn cloud_base_altitude(surface_temp_celsius: f64, dew_point_celsius: f64) -> f64 {
     let spread = surface_temp_celsius - dew_point_celsius;
-    if spread < 0.0 { return 0.0; }
+    if spread < 0.0 {
+        return 0.0;
+    }
     spread / 8.0 * 1000.0
 }
 
@@ -70,7 +90,10 @@ mod tests {
     fn cloud_base_typical() {
         // T=25°C, Td=15°C → spread=10 → base ≈ 1250m
         let base = cloud_base_altitude(25.0, 15.0);
-        assert!((base - 1250.0).abs() < 10.0, "cloud base should be ~1250m, got {base}");
+        assert!(
+            (base - 1250.0).abs() < 10.0,
+            "cloud base should be ~1250m, got {base}"
+        );
     }
 
     #[test]
@@ -106,5 +129,19 @@ mod tests {
     #[test]
     fn negative_spread_zero_base() {
         assert_eq!(cloud_base_altitude(10.0, 15.0), 0.0);
+    }
+
+    #[test]
+    fn cloud_type_display() {
+        assert_eq!(CloudType::Cumulonimbus.to_string(), "Cumulonimbus");
+        assert_eq!(CloudType::Cirrus.to_string(), "Cirrus");
+    }
+
+    #[test]
+    fn cloud_type_serde_roundtrip() {
+        let ct = CloudType::Stratocumulus;
+        let json = serde_json::to_string(&ct).unwrap();
+        let ct2: CloudType = serde_json::from_str(&json).unwrap();
+        assert_eq!(ct, ct2);
     }
 }

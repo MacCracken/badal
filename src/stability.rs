@@ -9,20 +9,27 @@ pub const MOIST_ADIABATIC_LAPSE: f64 = 0.006;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum StabilityClass {
-    /// Environmental lapse < moist adiabatic → very stable (inversions)
+    /// Environmental lapse rate < reference adiabatic → stable (resists vertical motion).
     Stable,
-    /// Environmental lapse between moist and dry adiabatic → conditionally unstable
+    /// Environmental lapse rate ≈ reference adiabatic → neutral (neither resists nor enhances).
     Neutral,
-    /// Environmental lapse > dry adiabatic → absolutely unstable
+    /// Environmental lapse rate > reference adiabatic → unstable (enhances vertical motion).
     Unstable,
 }
 
 /// Classify atmospheric stability from environmental lapse rate.
 ///
-/// lapse_rate in °C/m (positive = temperature decreasing with altitude).
+/// Compares against the dry adiabatic lapse rate (unsaturated) or moist adiabatic
+/// lapse rate (saturated). `lapse_rate` in °C/m (positive = temperature decreasing
+/// with altitude).
 #[must_use]
+#[inline]
 pub fn classify_stability(environmental_lapse: f64, is_saturated: bool) -> StabilityClass {
-    let reference = if is_saturated { MOIST_ADIABATIC_LAPSE } else { DRY_ADIABATIC_LAPSE };
+    let reference = if is_saturated {
+        MOIST_ADIABATIC_LAPSE
+    } else {
+        DRY_ADIABATIC_LAPSE
+    };
     if environmental_lapse > reference {
         StabilityClass::Unstable
     } else if (environmental_lapse - reference).abs() < 0.001 {
@@ -38,10 +45,15 @@ pub fn classify_stability(environmental_lapse: f64, is_saturated: bool) -> Stabi
 ///
 /// Returns CAPE in J/kg. Higher = more unstable.
 #[must_use]
+#[inline]
 pub fn cape_simple(parcel_temp_k: f64, env_temp_k: f64, depth_m: f64) -> f64 {
-    if env_temp_k <= 0.0 { return 0.0; }
+    if env_temp_k <= 0.0 {
+        return 0.0;
+    }
     let buoyancy = (parcel_temp_k - env_temp_k) / env_temp_k;
-    if buoyancy <= 0.0 { return 0.0; }
+    if buoyancy <= 0.0 {
+        return 0.0;
+    }
     9.81 * buoyancy * depth_m
 }
 
@@ -87,7 +99,11 @@ mod tests {
     fn conditionally_unstable() {
         // Saturated: lapse between moist and dry → could be unstable if saturated
         let s = classify_stability(0.008, true);
-        assert_eq!(s, StabilityClass::Unstable, "saturated with lapse > moist should be unstable");
+        assert_eq!(
+            s,
+            StabilityClass::Unstable,
+            "saturated with lapse > moist should be unstable"
+        );
     }
 
     #[test]
@@ -95,13 +111,22 @@ mod tests {
         // Parcel 2K warmer than environment over 1000m
         let cape = cape_simple(302.0, 300.0, 1000.0);
         assert!(cape > 0.0, "positive buoyancy should give positive CAPE");
-        assert!((cape - 65.4).abs() < 1.0, "CAPE should be ~65 J/kg, got {cape}");
+        assert!(
+            (cape - 65.4).abs() < 1.0,
+            "CAPE should be ~65 J/kg, got {cape}"
+        );
     }
 
     #[test]
     fn cape_no_buoyancy() {
         let cape = cape_simple(298.0, 300.0, 1000.0);
         assert_eq!(cape, 0.0, "negative buoyancy → zero CAPE");
+    }
+
+    #[test]
+    fn cape_zero_env_temp() {
+        assert_eq!(cape_simple(300.0, 0.0, 1000.0), 0.0);
+        assert_eq!(cape_simple(300.0, -10.0, 1000.0), 0.0);
     }
 
     #[test]
@@ -120,11 +145,22 @@ mod tests {
     fn k_index_high_risk() {
         // Typical high thunderstorm risk values
         let ki = k_index(20.0, -10.0, 15.0, 10.0, 5.0);
-        assert!(ki > 30.0, "should indicate high thunderstorm risk, got {ki}");
+        assert!(
+            ki > 30.0,
+            "should indicate high thunderstorm risk, got {ki}"
+        );
     }
 
     #[test]
     fn dry_adiabatic_lapse_value() {
         assert!((DRY_ADIABATIC_LAPSE - 0.0098).abs() < 0.0001);
+    }
+
+    #[test]
+    fn stability_class_serde_roundtrip() {
+        let s = StabilityClass::Unstable;
+        let json = serde_json::to_string(&s).unwrap();
+        let s2: StabilityClass = serde_json::from_str(&json).unwrap();
+        assert_eq!(s, s2);
     }
 }

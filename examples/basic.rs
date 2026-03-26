@@ -1,14 +1,19 @@
-use badal::{atmosphere, moisture, cloud, wind, stability};
+use badal::{atmosphere, cloud, moisture, stability, wind};
 
 fn main() {
     let state = atmosphere::AtmosphericState::at_altitude(2000.0);
-    println!("At 2000m: T={:.1}K ({:.1}°C), P={:.0}Pa, ρ={:.3}kg/m³",
-        state.temperature_k, state.temperature_celsius(), state.pressure_pa, state.density());
+    println!(
+        "At 2000m: T={:.1}K ({:.1}°C), P={:.0}Pa, ρ={:.3}kg/m³",
+        state.temperature_k,
+        state.temperature_celsius(),
+        state.pressure_pa,
+        state.density()
+    );
 
     let es = moisture::saturation_vapor_pressure(20.0);
     println!("Saturation VP at 20°C: {es:.0} Pa");
 
-    let dp = atmosphere::dew_point(25.0, 60.0);
+    let dp = moisture::dew_point(25.0, 60.0).expect("valid humidity");
     let base = cloud::cloud_base_altitude(25.0, dp);
     println!("Dew point at 25°C/60%: {dp:.1}°C → cloud base: {base:.0}m");
 

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- **atmosphere** — `AtmosphericState` fields are now private; use `new()` for validated construction or getters (`temperature_k()`, `pressure_pa()`, `humidity_percent()`, `altitude_m()`) for access
 - **moisture** — unified Magnus-Tetens coefficients to Bolton (1980): a=17.67, b=243.5, e₀=611.2 Pa across both `saturation_vapor_pressure` and `dew_point`
 - **moisture** — `dew_point()` moved from `atmosphere` module to `moisture` module where it belongs
 - **moisture** — `dew_point()` now returns `Option<f64>`, returning `None` for invalid humidity (≤0% or >100%) instead of panicking on ln(0)
@@ -10,6 +11,7 @@
 - **atmosphere** — added `PartialEq` derive on `AtmosphericState`
 - **stability** — fixed doc comments on `StabilityClass` variants to match actual code behavior
 - **pressure** — clarified `barometric_pressure` doc: isothermal approximation vs ISA
+- **logging** — `init()` now uses `try_init()` — safe to call multiple times without panicking
 
 ### Fixed
 - **pressure** — removed unused `SEA_LEVEL_PRESSURE` import (clippy)
@@ -17,12 +19,13 @@
 - Formatting issues across all source files
 
 ### Added
+- **atmosphere** — `AtmosphericState::new()` validated constructor rejecting invalid temperature (≤0K), pressure (<0), humidity (outside [0,100])
 - Missing `#[inline]` on hot-path functions: `classify_stability`, `cape_simple`, `barometric_pressure`, `heat_index`, `wet_bulb_temperature`
 - Doc comment on `logging::init()`
-- Tests: stratosphere pressure, `AtmosphericState::at_altitude`, serde round-trips (AtmosphericState, CloudType, StabilityClass), `air_density` edge cases, `cape_simple` zero-temp edge, `altimeter_setting`, `geostrophic_wind_speed` zero-coriolis, `thermal_wind_shear` (positive/zero-coriolis/zero-gradient), `wet_bulb_temperature` extremes, `dew_point` validation, end-to-end weather profile integration test
+- Tests: constructor validation, stratosphere pressure, `AtmosphericState::at_altitude`, serde round-trips (AtmosphericState, CloudType, StabilityClass), `air_density` edge cases, `cape_simple` zero-temp edge, `altimeter_setting`, `geostrophic_wind_speed` zero-coriolis, `thermal_wind_shear` (positive/zero-coriolis/zero-gradient), `wet_bulb_temperature` extremes, `dew_point` validation, end-to-end weather profile integration test
 - Benchmarks: `standard_pressure`, `air_density`, `dew_point`, `heat_index`, `wet_bulb_temperature`, `wind_chill`, `barometric_pressure`, `classify_stability`, `cape_simple`
 - `docs/architecture/math.md` — complete mathematical reference with formulas and sources
-- Tests: 45 → 79 (74 unit + 5 integration)
+- Tests: 45 → 86 (79 unit + 7 integration), coverage 95.18%
 - Benchmarks: 5 → 14
 
 ## [0.1.0] - 2026-03-25

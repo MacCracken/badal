@@ -4,9 +4,9 @@ fn main() {
     let state = atmosphere::AtmosphericState::at_altitude(2000.0);
     println!(
         "At 2000m: T={:.1}K ({:.1}°C), P={:.0}Pa, ρ={:.3}kg/m³",
-        state.temperature_k,
+        state.temperature_k(),
         state.temperature_celsius(),
-        state.pressure_pa,
+        state.pressure_pa(),
         state.density()
     );
 

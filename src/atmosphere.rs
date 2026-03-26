@@ -14,15 +14,56 @@ pub const R_AIR: f64 = 287.058;
 pub const G: f64 = 9.80665;
 
 /// Complete atmospheric state at a point.
+///
+/// Use [`AtmosphericState::new`] for validated construction, or
+/// [`AtmosphericState::sea_level`] / [`AtmosphericState::at_altitude`]
+/// for known-valid standard states.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AtmosphericState {
-    pub temperature_k: f64,
-    pub pressure_pa: f64,
-    pub humidity_percent: f64,
-    pub altitude_m: f64,
+    temperature_k: f64,
+    pressure_pa: f64,
+    humidity_percent: f64,
+    altitude_m: f64,
 }
 
 impl AtmosphericState {
+    /// Create a validated atmospheric state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any parameter is physically invalid:
+    /// - `temperature_k` ≤ 0 (below absolute zero)
+    /// - `pressure_pa` < 0
+    /// - `humidity_percent` outside [0, 100]
+    pub fn new(
+        temperature_k: f64,
+        pressure_pa: f64,
+        humidity_percent: f64,
+        altitude_m: f64,
+    ) -> crate::Result<Self> {
+        if temperature_k <= 0.0 {
+            return Err(crate::BadalError::InvalidTemperature(format!(
+                "{temperature_k} K is at or below absolute zero"
+            )));
+        }
+        if pressure_pa < 0.0 {
+            return Err(crate::BadalError::InvalidPressure(format!(
+                "{pressure_pa} Pa is negative"
+            )));
+        }
+        if !(0.0..=100.0).contains(&humidity_percent) {
+            return Err(crate::BadalError::InvalidHumidity(format!(
+                "{humidity_percent}% is outside [0, 100]"
+            )));
+        }
+        Ok(Self {
+            temperature_k,
+            pressure_pa,
+            humidity_percent,
+            altitude_m,
+        })
+    }
+
     /// Sea level standard conditions.
     #[must_use]
     pub fn sea_level() -> Self {
@@ -43,6 +84,34 @@ impl AtmosphericState {
             humidity_percent: 50.0, // default; actual humidity varies
             altitude_m,
         }
+    }
+
+    /// Temperature in Kelvin.
+    #[must_use]
+    #[inline]
+    pub fn temperature_k(&self) -> f64 {
+        self.temperature_k
+    }
+
+    /// Pressure in Pascals.
+    #[must_use]
+    #[inline]
+    pub fn pressure_pa(&self) -> f64 {
+        self.pressure_pa
+    }
+
+    /// Relative humidity as a percentage [0, 100].
+    #[must_use]
+    #[inline]
+    pub fn humidity_percent(&self) -> f64 {
+        self.humidity_percent
+    }
+
+    /// Altitude in meters.
+    #[must_use]
+    #[inline]
+    pub fn altitude_m(&self) -> f64 {
+        self.altitude_m
     }
 
     /// Air density at this state from ideal gas law.
@@ -170,17 +239,45 @@ mod tests {
     #[test]
     fn atmospheric_state_sea_level() {
         let s = AtmosphericState::sea_level();
-        assert!((s.temperature_k - 288.15).abs() < 0.01);
+        assert!((s.temperature_k() - 288.15).abs() < 0.01);
         assert!((s.density() - 1.225).abs() < 0.01);
     }
 
     #[test]
     fn atmospheric_state_at_altitude() {
         let s = AtmosphericState::at_altitude(5000.0);
-        assert!((s.temperature_k - 255.65).abs() < 0.01);
-        assert!(s.pressure_pa < SEA_LEVEL_PRESSURE);
-        assert_eq!(s.altitude_m, 5000.0);
-        assert_eq!(s.humidity_percent, 50.0);
+        assert!((s.temperature_k() - 255.65).abs() < 0.01);
+        assert!(s.pressure_pa() < SEA_LEVEL_PRESSURE);
+        assert_eq!(s.altitude_m(), 5000.0);
+        assert_eq!(s.humidity_percent(), 50.0);
+    }
+
+    #[test]
+    fn new_rejects_zero_temp() {
+        assert!(AtmosphericState::new(0.0, 101_325.0, 50.0, 0.0).is_err());
+    }
+
+    #[test]
+    fn new_rejects_negative_pressure() {
+        assert!(AtmosphericState::new(288.15, -1.0, 50.0, 0.0).is_err());
+    }
+
+    #[test]
+    fn new_rejects_invalid_humidity() {
+        assert!(AtmosphericState::new(288.15, 101_325.0, -1.0, 0.0).is_err());
+        assert!(AtmosphericState::new(288.15, 101_325.0, 101.0, 0.0).is_err());
+    }
+
+    #[test]
+    fn new_accepts_valid() {
+        let s = AtmosphericState::new(288.15, 101_325.0, 50.0, 0.0).unwrap();
+        assert_eq!(s, AtmosphericState::sea_level());
+    }
+
+    #[test]
+    fn new_accepts_boundary_values() {
+        assert!(AtmosphericState::new(0.01, 0.0, 0.0, -500.0).is_ok());
+        assert!(AtmosphericState::new(288.15, 101_325.0, 100.0, 0.0).is_ok());
     }
 
     #[test]

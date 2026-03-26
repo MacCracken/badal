@@ -2,7 +2,7 @@ use crate::atmosphere::{G, R_AIR};
 
 /// Barometric pressure at altitude given sea-level pressure (isothermal approximation).
 ///
-/// Uses the hypsometric equation assuming constant temperature through the layer.
+/// Uses the exponential barometric formula assuming constant temperature through the layer.
 /// For ISA-accurate pressure, use [`crate::atmosphere::standard_pressure`] instead.
 #[must_use]
 #[inline]

@@ -55,6 +55,48 @@ pub fn thermal_wind_shear(temp_gradient_k_per_m: f64, coriolis: f64) -> f64 {
     (9.81 / (coriolis.abs() * 280.0)) * temp_gradient_k_per_m.abs() * 1000.0
 }
 
+/// Wind direction (degrees, meteorological convention) from u and v components.
+///
+/// Meteorological convention: direction wind is coming FROM, clockwise from north.
+/// 0°/360° = north, 90° = east, 180° = south, 270° = west.
+///
+/// - `u`: east-west component (m/s, positive = eastward)
+/// - `v`: north-south component (m/s, positive = northward)
+#[must_use]
+#[inline]
+pub fn wind_direction(u: f64, v: f64) -> f64 {
+    if u.abs() < f64::EPSILON && v.abs() < f64::EPSILON {
+        return 0.0; // calm
+    }
+    // Meteorological convention: direction wind is FROM
+    // atan2(-u, -v) gives the angle from north, clockwise
+    let dir = (-u).atan2(-v).to_degrees();
+    if dir < 0.0 { dir + 360.0 } else { dir }
+}
+
+/// Wind speed (m/s) from u and v components.
+#[must_use]
+#[inline]
+pub fn wind_speed(u: f64, v: f64) -> f64 {
+    u.hypot(v)
+}
+
+/// Logarithmic wind profile — extrapolate wind speed to a different height.
+///
+/// u(z) = u_ref × ln(z / z₀) / ln(z_ref / z₀)
+///
+/// - `speed_ref`: measured wind speed at reference height (m/s)
+/// - `z_ref`: reference measurement height (m)
+/// - `z_target`: target height (m)
+/// - `z0`: surface roughness length (m). Typical: 0.03 open terrain, 0.1 suburbs, 1.0 city.
+#[must_use]
+pub fn log_wind_profile(speed_ref: f64, z_ref: f64, z_target: f64, z0: f64) -> f64 {
+    if z0 <= 0.0 || z_ref <= z0 || z_target <= z0 || speed_ref <= 0.0 {
+        return 0.0;
+    }
+    speed_ref * (z_target / z0).ln() / (z_ref / z0).ln()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,5 +184,67 @@ mod tests {
     fn thermal_wind_shear_zero_gradient() {
         let f = coriolis_parameter(45.0_f64.to_radians());
         assert_eq!(thermal_wind_shear(0.0, f), 0.0);
+    }
+
+    // -- wind direction --
+
+    #[test]
+    fn wind_direction_from_south() {
+        // v positive = blowing northward = wind FROM south = 180°
+        let dir = wind_direction(0.0, 1.0);
+        assert!(
+            (dir - 180.0).abs() < 1.0,
+            "southerly wind (v>0) should be ~180°, got {dir}"
+        );
+    }
+
+    #[test]
+    fn wind_direction_from_west() {
+        // u positive = blowing eastward = wind FROM west = 270°
+        let dir = wind_direction(1.0, 0.0);
+        assert!(
+            (dir - 270.0).abs() < 1.0,
+            "westerly wind (u>0) should be ~270°, got {dir}"
+        );
+    }
+
+    #[test]
+    fn wind_direction_from_north() {
+        // v negative = blowing southward = wind FROM north = 360° (or 0°)
+        let dir = wind_direction(0.0, -1.0);
+        assert!(
+            !(1.0..=359.0).contains(&dir),
+            "northerly wind should be ~0°/360°, got {dir}"
+        );
+    }
+
+    #[test]
+    fn wind_direction_calm() {
+        assert_eq!(wind_direction(0.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn wind_speed_basic() {
+        assert!((wind_speed(3.0, 4.0) - 5.0).abs() < f64::EPSILON);
+    }
+
+    // -- log wind profile --
+
+    #[test]
+    fn log_profile_same_height() {
+        let v = log_wind_profile(10.0, 10.0, 10.0, 0.03);
+        assert!((v - 10.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn log_profile_higher() {
+        let v = log_wind_profile(10.0, 10.0, 50.0, 0.03);
+        assert!(v > 10.0, "wind should increase with height, got {v}");
+    }
+
+    #[test]
+    fn log_profile_lower() {
+        let v = log_wind_profile(10.0, 10.0, 2.0, 0.03);
+        assert!(v < 10.0, "wind should decrease below ref height, got {v}");
     }
 }

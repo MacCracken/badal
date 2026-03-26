@@ -4,13 +4,18 @@
 //! engine for the AGNOS ecosystem.
 //!
 //! Provides ISA atmosphere, pressure systems, moisture/humidity, cloud classification,
-//! wind dynamics, and atmospheric stability analysis. Built on [`hisab`] for math.
+//! wind dynamics, atmospheric stability, precipitation, radiation budget, and
+//! mesoscale phenomena. Built on [`hisab`] for math.
 
 pub mod atmosphere;
 pub mod cloud;
 pub mod error;
+pub mod mesoscale;
 pub mod moisture;
+pub mod precipitation;
 pub mod pressure;
+pub mod radiation;
+pub mod severe;
 pub mod stability;
 pub mod wind;
 
@@ -21,5 +26,7 @@ pub use atmosphere::{AtmosphericState, air_density, standard_pressure, standard_
 pub use cloud::CloudType;
 pub use error::{BadalError, Result};
 pub use moisture::{dew_point, saturation_vapor_pressure};
+pub use precipitation::PrecipitationType;
+pub use severe::ThreatLevel;
 pub use stability::StabilityClass;
 pub use wind::{beaufort_scale, coriolis_parameter, wind_chill};

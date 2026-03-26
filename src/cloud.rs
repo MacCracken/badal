@@ -52,10 +52,16 @@ impl CloudType {
         }
     }
 
-    /// Does this cloud type produce precipitation?
+    /// Does this cloud type commonly produce precipitation?
+    ///
+    /// Cumulonimbus and Nimbostratus are the primary precipitation producers.
+    /// Stratus can produce drizzle and light rain.
     #[must_use]
     pub fn produces_precipitation(&self) -> bool {
-        matches!(self, Self::Cumulonimbus | Self::Nimbostratus)
+        matches!(
+            self,
+            Self::Cumulonimbus | Self::Nimbostratus | Self::Stratus
+        )
     }
 }
 
@@ -106,6 +112,11 @@ mod tests {
     #[test]
     fn cumulonimbus_precipitates() {
         assert!(CloudType::Cumulonimbus.produces_precipitation());
+    }
+
+    #[test]
+    fn stratus_precipitates() {
+        assert!(CloudType::Stratus.produces_precipitation());
     }
 
     #[test]

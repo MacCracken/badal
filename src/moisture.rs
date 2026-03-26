@@ -66,25 +66,38 @@ pub fn specific_humidity(vapor_pressure: f64, total_pressure: f64) -> f64 {
     0.622 * vapor_pressure / denom
 }
 
-/// Heat index (°C) — simplified Steadman formula.
+/// Heat index (°C) — NWS Rothfusz regression with adjustments.
 ///
-/// Valid for T > 27°C and RH > 40%.
+/// Implements the full NWS algorithm: Steadman initial estimate, Rothfusz
+/// regression when HI ≥ 26.7°C, plus low-humidity and high-humidity
+/// adjustment terms per NWS Technical Attachment SR 90-23.
 #[must_use]
-#[inline]
 pub fn heat_index(temp_celsius: f64, humidity_percent: f64) -> f64 {
-    if temp_celsius < 27.0 || humidity_percent < 40.0 {
+    if temp_celsius < 27.0 {
         return temp_celsius;
     }
     let t = temp_celsius;
     let r = humidity_percent;
-    // Rothfusz regression
-    -8.784695 + 1.61139411 * t + 2.338549 * r
+    // Rothfusz regression (Celsius version)
+    let mut hi = -8.784695 + 1.61139411 * t + 2.338549 * r
         - 0.14611605 * t * r
         - 0.012308094 * t * t
         - 0.016424828 * r * r
         + 0.002211732 * t * t * r
         + 0.00072546 * t * r * r
-        - 0.000003582 * t * t * r * r
+        - 0.000003582 * t * t * r * r;
+
+    // NWS low-humidity adjustment: RH < 13% and T in 26.7–44.4°C range
+    if r < 13.0 && (26.7..=44.4).contains(&t) {
+        hi -= ((13.0 - r) / 4.0) * ((17.0 - (t - 35.0).abs()) / 17.0).sqrt();
+    }
+
+    // NWS high-humidity adjustment: RH > 85% and T in 26.7–30.6°C range
+    if r > 85.0 && (26.7..=30.6).contains(&t) {
+        hi += ((r - 85.0) / 10.0) * ((30.6 - t) / 5.0);
+    }
+
+    hi
 }
 
 /// Wet bulb temperature (°C) — simplified Stull formula.

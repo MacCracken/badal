@@ -155,3 +155,178 @@ KI > 30 → high thunderstorm risk.
 z_base ≈ (T - T_d) / 8 × 1000   [m]
 ```
 ≈ 125m per °C of temperature-dew point spread.
+
+## Precipitation
+
+### Rain Rate — Convective (Cumulonimbus)
+```
+R = 2 × (CAPE / 100)^0.5   [mm/hr], capped at 100
+```
+Empirical parameterization; rate scales with sqrt(CAPE).
+
+### Rain Rate — Stratiform (Nimbostratus)
+```
+R = 1 + 0.003 × CAPE   [mm/hr], capped at 10
+```
+Steadier, less CAPE-dependent than convective.
+
+### Intensity Classification (WMO)
+| Category | Rate (mm/hr) |
+|----------|-------------|
+| Light    | < 2.5       |
+| Moderate | 2.5–7.5     |
+| Heavy    | 7.5–50      |
+| Violent  | > 50        |
+
+### Accumulation
+```
+A = R × Δt   [mm]
+```
+R in mm/hr, Δt in hours.
+
+### Snow-to-Liquid Ratio (SLR)
+Temperature-dependent:
+- T < -15°C: SLR = 15 (dry, fluffy)
+- -15 ≤ T < -5°C: SLR = 12
+- T ≥ -5°C: SLR = 8 (wet, heavy)
+
+Snow depth (cm) = liquid_mm × SLR / 10.
+
+### Freezing Level
+```
+z_freeze = T_surface / 0.0065   [m]
+```
+Assumes standard lapse rate (6.5°C/km). Returns 0 if surface ≤ 0°C.
+
+## Radiation
+
+### Solar Declination
+```
+δ ≈ -23.44° × cos(2π/365 × (day + 10))   [rad]
+```
+Approximation accurate to ±1°.
+
+### Hour Angle
+```
+h = (hour - 12) × 15°   [rad]
+```
+Negative morning, positive afternoon, 0 at solar noon.
+
+### Solar Zenith Angle
+```
+cos(θ_z) = sin(φ)sin(δ) + cos(φ)cos(δ)cos(h)
+```
+φ = latitude, δ = declination, h = hour angle. θ_z > 90° = below horizon.
+
+### Clear-Sky Solar Irradiance
+```
+I = S × τ × cos(θ_z)   [W/m²]
+```
+S = 1361 W/m² (solar constant), τ = atmospheric transmissivity (~0.75 clear sky).
+
+### Cloud Attenuation — Kasten & Czeplak (1980)
+```
+I_cloudy = I_clear × (1 - 0.75 × CF^3.4)
+```
+CF = cloud fraction [0, 1].
+
+Source: Kasten, F. & Czeplak, G. (1980). "Solar and terrestrial radiation dependent on the amount and type of cloud." *Solar Energy*, 24(2), 177–189.
+
+### Longwave Emission — Stefan-Boltzmann
+```
+F = ε × σ × T⁴   [W/m²]
+```
+σ = 5.670374419 × 10⁻⁸ W/(m²·K⁴), ε = emissivity.
+
+### Net Radiation
+```
+R_net = (1 - α) × S_in + L_down - L_up   [W/m²]
+```
+α = albedo. Positive = warming, negative = cooling.
+
+### Diurnal Temperature Range (simplified)
+```
+ΔT ≈ R_net × Δt / (ρ × c_p × h_mix) × (1 - 0.5 × CF)
+```
+ρ = 1.225 kg/m³, c_p = 1005 J/(kg·K), h_mix = 100 m, Δt = 6 hr.
+
+### Radiative Equilibrium Temperature
+```
+T_eq = (S × (1 - α) / (4σ))^0.25   [K]
+```
+Earth: T_eq ≈ 255 K (actual ~288 K due to greenhouse effect).
+
+## Mesoscale
+
+### Sea/Land Breeze
+```
+V = √(g × h × |ΔT| / T_mean)   [m/s]
+```
+h = boundary layer depth, ΔT = land − sea temperature.
+Positive = sea breeze (onshore), negative = land breeze (offshore).
+
+### Sea Breeze Front Penetration
+```
+d = V × t × 0.5   [m]
+```
+Front advances at roughly half the breeze speed. Convert to km: d/1000.
+
+### Katabatic / Anabatic Wind
+```
+V = √(2 × g × Δz × ΔT / T_env)   [m/s]
+```
+Δz = L × sin(slope), L = slope length.
+Katabatic: cold air drainage downslope (night). Anabatic: warm air rising upslope (day).
+
+### Valley Wind Phase
+```
+phase = -cos(2π × (hour - 3) / 24)
+```
+Positive = upvalley (day), negative = downvalley (night). Peak upvalley ~14:00, downvalley ~03:00.
+
+### Urban Heat Island — Oke (1973)
+```
+ΔT_UHI = (pop / 10000)^0.27 × wind_factor × cloud_factor
+```
+- wind_factor = 1 / (1 + 0.3V) for V > 0.5 m/s
+- cloud_factor = 1 - 0.6 × CF
+
+Source: Oke, T.R. (1973). "City size and the urban heat island." *Atmospheric Environment*, 7(8), 769–779.
+
+### Canyon Temperature Excess
+```
+ΔT_canyon = ΔT_UHI × (1 + (1 - SVF))
+```
+SVF = sky view factor [0, 1]. Lower SVF (narrower canyon) amplifies UHI up to 2×.
+
+## Severe Weather
+
+### Supercell Composite Parameter (SCP)
+```
+SCP = (CAPE / 1000) × (shear_0-6km / 20) × (SRH / 100)
+```
+SCP > 1 favors supercells. SCP > 4 favors significant supercells.
+
+### Significant Tornado Parameter (STP)
+```
+STP = (CAPE / 1500) × (shear / 20) × (SRH / 150) × ((2000 - LCL) / 1000)
+```
+LCL term clamped [0, 2]. STP > 1 favors significant (EF2+) tornadoes.
+
+### Derecho Composite Parameter (DCP)
+```
+DCP = (CAPE / 980) × (shear / 18) × (mean_wind / 16)
+```
+DCP > 2 favors derecho development.
+
+### Bulk Richardson Number (BRN)
+```
+BRN = CAPE / (0.5 × shear²)
+```
+BRN 10–45: supercells. < 10: too much shear. > 45: multicell (insufficient shear).
+
+### Energy-Helicity Index (EHI)
+```
+EHI = (CAPE × SRH) / 160000
+```
+EHI > 1: tornado possible. EHI > 2: significant tornado likely.

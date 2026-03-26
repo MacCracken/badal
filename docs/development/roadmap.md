@@ -1,29 +1,40 @@
 # Badal Roadmap
 
 ## Status
-**v0.1.0** — Initial scaffold with real meteorology.
+**v0.1.0** — Initial scaffold with full meteorology suite.
 
-## Future Features (demand-gated)
+## Completed
 
 ### Precipitation
 - Rain rate estimation from cloud type + CAPE
-- Snow/hail prediction from temperature profile
-- Precipitation accumulation model
+- Snow/hail prediction from temperature profile (wet bulb discriminator, SLR)
+- Precipitation accumulation model (liquid + snow)
+- Precipitation type classification (7 types)
+- Intensity classification (WMO thresholds)
+- Freezing level estimation
 
 ### Radiation Budget
-- Solar radiation at surface (clear sky + cloud attenuation)
-- Longwave radiation (Stefan-Boltzmann + atmospheric window)
-- Diurnal temperature cycle from radiation balance
+- Solar geometry (declination, hour angle, zenith angle)
+- Solar radiation at surface (clear sky + Kasten & Czeplak cloud attenuation)
+- Longwave radiation (Stefan-Boltzmann emission + atmospheric downwelling)
+- Net radiation balance
+- Diurnal temperature range from energy balance
+- Radiative equilibrium temperature
 
 ### Mesoscale
-- Sea/land breeze model
-- Mountain/valley wind (katabatic/anabatic)
-- Urban heat island effect
+- Sea/land breeze model with front penetration
+- Mountain/valley wind (katabatic/anabatic) with diurnal phase
+- Urban heat island (Oke 1973) with wind/cloud modifiers + canyon amplification
 
 ### Severe Weather
-- Supercell thunderstorm parameter (SCP)
-- Significant tornado parameter (STP)
-- Derecho composite parameter
+- Supercell Composite Parameter (SCP)
+- Significant Tornado Parameter (STP)
+- Derecho Composite Parameter (DCP)
+- Bulk Richardson Number (BRN)
+- Energy-Helicity Index (EHI)
+- ThreatLevel classification (6-tier)
+
+## Future Features (demand-gated)
 
 ### Integration
 - ushma coupling: surface energy balance, evapotranspiration

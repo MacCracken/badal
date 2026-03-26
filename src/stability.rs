@@ -32,7 +32,7 @@ pub fn classify_stability(environmental_lapse: f64, is_saturated: bool) -> Stabi
     };
     if environmental_lapse > reference {
         StabilityClass::Unstable
-    } else if (environmental_lapse - reference).abs() < 0.001 {
+    } else if (environmental_lapse - reference).abs() < 0.000_3 {
         StabilityClass::Neutral
     } else {
         StabilityClass::Stable
@@ -75,6 +75,87 @@ pub fn lifted_index(env_temp_500mb: f64, parcel_temp_500mb: f64) -> f64 {
 #[inline]
 pub fn k_index(t_850: f64, t_500: f64, td_850: f64, t_700: f64, td_700: f64) -> f64 {
     (t_850 - t_500) + td_850 - (t_700 - td_700)
+}
+
+/// Total Totals index: simple instability measure.
+///
+/// TT = (T_850 - T_500) + (Td_850 - T_500)
+///
+/// TT > 44 → thunderstorms possible. TT > 52 → severe thunderstorms likely.
+#[must_use]
+#[inline]
+pub fn total_totals(t_850: f64, t_500: f64, td_850: f64) -> f64 {
+    (t_850 - t_500) + (td_850 - t_500)
+}
+
+/// Convective Inhibition (J/kg) — negative buoyancy a parcel must overcome.
+///
+/// CIN = g × ((T_env - T_parcel) / T_env) × Δz
+///
+/// Returns a positive value representing the energy barrier. CIN > 200 J/kg
+/// typically prevents storm initiation without a strong forcing mechanism.
+///
+/// - `parcel_temp_k`: parcel temperature (K)
+/// - `env_temp_k`: environmental temperature (K)
+/// - `depth_m`: depth of the inhibition layer (m)
+#[must_use]
+#[inline]
+pub fn cin_simple(parcel_temp_k: f64, env_temp_k: f64, depth_m: f64) -> f64 {
+    if env_temp_k <= 0.0 || depth_m <= 0.0 {
+        return 0.0;
+    }
+    let buoyancy = (env_temp_k - parcel_temp_k) / env_temp_k;
+    if buoyancy <= 0.0 {
+        return 0.0; // parcel is already buoyant, no inhibition
+    }
+    9.81 * buoyancy * depth_m
+}
+
+/// Moist adiabatic lapse rate (°C/m) as a function of temperature and pressure.
+///
+/// Γ_m = Γ_d × (1 + L_v × r_s / (R_d × T)) / (1 + L_v² × r_s / (c_p × R_v × T²))
+///
+/// where r_s is the saturation mixing ratio. More accurate than the constant
+/// [`MOIST_ADIABATIC_LAPSE`], which is valid only near 0°C.
+///
+/// - `temperature_k`: temperature (K)
+/// - `pressure_pa`: pressure (Pa)
+#[must_use]
+pub fn moist_adiabatic_lapse_rate(temperature_k: f64, pressure_pa: f64) -> f64 {
+    if temperature_k <= 0.0 || pressure_pa <= 0.0 {
+        return DRY_ADIABATIC_LAPSE;
+    }
+    let lv = 2_501_000.0; // latent heat of vaporization (J/kg)
+    let rv = 461.5; // gas constant for water vapor (J/(kg·K))
+    let rd = 287.052_87; // gas constant for dry air (J/(kg·K))
+    let cp = 1005.0; // specific heat at constant pressure (J/(kg·K))
+
+    // Saturation mixing ratio
+    let t_c = temperature_k - 273.15;
+    let es = 611.2 * (17.67 * t_c / (t_c + 243.5)).exp();
+    let rs = 0.622 * es / (pressure_pa - es).max(1.0);
+
+    let numerator = 1.0 + lv * rs / (rd * temperature_k);
+    let denominator = 1.0 + lv * lv * rs / (cp * rv * temperature_k * temperature_k);
+    DRY_ADIABATIC_LAPSE * numerator / denominator
+}
+
+/// Brunt-Väisälä frequency squared (s⁻²) — measure of static stability.
+///
+/// N² = (g / θ) × (dθ/dz)
+///
+/// N² > 0 → stable (oscillations). N² < 0 → unstable (convection).
+/// N² = 0 → neutral.
+///
+/// - `potential_temp_k`: potential temperature (K)
+/// - `d_theta_dz`: vertical gradient of potential temperature (K/m)
+#[must_use]
+#[inline]
+pub fn brunt_vaisala_squared(potential_temp_k: f64, d_theta_dz: f64) -> f64 {
+    if potential_temp_k <= 0.0 {
+        return 0.0;
+    }
+    (9.81 / potential_temp_k) * d_theta_dz
 }
 
 #[cfg(test)]
@@ -162,5 +243,101 @@ mod tests {
         let json = serde_json::to_string(&s).unwrap();
         let s2: StabilityClass = serde_json::from_str(&json).unwrap();
         assert_eq!(s, s2);
+    }
+
+    // -- total totals --
+
+    #[test]
+    fn total_totals_severe() {
+        // T850=20, T500=-10, Td850=15 → TT = 30 + 25 = 55
+        let tt = total_totals(20.0, -10.0, 15.0);
+        assert!(
+            tt > 52.0,
+            "TT > 52 should indicate severe thunderstorms, got {tt}"
+        );
+    }
+
+    #[test]
+    fn total_totals_stable() {
+        let tt = total_totals(10.0, -5.0, 5.0);
+        assert!(tt < 44.0, "TT < 44 should be stable, got {tt}");
+    }
+
+    // -- CIN --
+
+    #[test]
+    fn cin_inhibition_present() {
+        // Parcel 3K cooler than environment over 500m
+        let cin = cin_simple(297.0, 300.0, 500.0);
+        assert!(cin > 0.0, "cooler parcel should have CIN, got {cin}");
+    }
+
+    #[test]
+    fn cin_no_inhibition() {
+        // Parcel warmer → no CIN
+        let cin = cin_simple(302.0, 300.0, 500.0);
+        assert_eq!(cin, 0.0);
+    }
+
+    // -- moist adiabatic lapse rate --
+
+    #[test]
+    fn moist_lapse_rate_near_zero_c() {
+        let gamma = moist_adiabatic_lapse_rate(273.15, 100_000.0);
+        // Near 0°C, should be ~5-7°C/km = 0.005-0.007°C/m
+        assert!(
+            gamma > 0.004 && gamma < 0.008,
+            "moist lapse at 0°C should be ~6°C/km, got {:.4}",
+            gamma
+        );
+    }
+
+    #[test]
+    fn moist_lapse_rate_warm() {
+        let gamma = moist_adiabatic_lapse_rate(303.15, 100_000.0); // 30°C
+        // At 30°C, should be ~3.5-4.5°C/km
+        assert!(
+            gamma < 0.006,
+            "moist lapse at 30°C should be < 6°C/km, got {:.4}",
+            gamma
+        );
+    }
+
+    #[test]
+    fn moist_lapse_rate_cold() {
+        let gamma = moist_adiabatic_lapse_rate(243.15, 100_000.0); // -30°C
+        // At -30°C, should approach dry adiabatic (~9°C/km)
+        assert!(
+            gamma > 0.008,
+            "moist lapse at -30°C should approach dry adiabatic, got {:.4}",
+            gamma
+        );
+    }
+
+    #[test]
+    fn moist_lapse_always_less_than_dry() {
+        for t in [243.15, 263.15, 283.15, 303.15] {
+            let gamma = moist_adiabatic_lapse_rate(t, 100_000.0);
+            assert!(
+                gamma < DRY_ADIABATIC_LAPSE,
+                "moist lapse {gamma:.4} should be < dry {DRY_ADIABATIC_LAPSE} at T={t}"
+            );
+        }
+    }
+
+    // -- Brunt-Väisälä --
+
+    #[test]
+    fn brunt_vaisala_stable() {
+        // Positive dθ/dz → stable → N² > 0
+        let n2 = brunt_vaisala_squared(300.0, 0.003);
+        assert!(n2 > 0.0, "positive dθ/dz should give N² > 0");
+    }
+
+    #[test]
+    fn brunt_vaisala_unstable() {
+        // Negative dθ/dz → unstable → N² < 0
+        let n2 = brunt_vaisala_squared(300.0, -0.003);
+        assert!(n2 < 0.0, "negative dθ/dz should give N² < 0");
     }
 }

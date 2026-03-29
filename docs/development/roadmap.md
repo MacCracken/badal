@@ -30,6 +30,23 @@
 ### Integration
 - [ ] bhava 1.5: weather conditions → agent mood/behavior modulation
 
+### Cross-Crate Bridges
+
+- [ ] **`bridge.rs` module** — primitive-value conversions for cross-crate weather/atmospheric data
+- [ ] **pavan bridge**: altitude (m) → air density (kg/m³), temperature (K), pressure (Pa); wind profile → free-stream velocity
+- [ ] **goonj bridge**: temperature (°C), humidity (%) → speed of sound, air absorption coefficients
+- [ ] **garjan bridge**: rain rate (mm/hr), wind speed (m/s) → already consumed by garjan's bridge (document the interface)
+- [ ] **prakash bridge**: atmospheric density profile → Rayleigh scattering optical depth; cloud cover fraction → diffuse/direct light ratio
+- [ ] **vanaspati bridge**: temperature (°C), rainfall (mm), solar radiation (W/m²) → growing conditions parameters
+
+### Soorat Integration (rendering visualization)
+
+- [ ] **`integration/soorat.rs` module** — feature-gated `soorat-compat`
+- [ ] **Cloud field visualization**: cloud type, coverage, altitude layers as volumetric data for cloud rendering
+- [ ] **Wind vector field**: 2D/3D wind velocity grid for arrow/streamline visualization
+- [ ] **Precipitation map**: rain/snow intensity grid for particle system rendering
+- [ ] **Temperature/pressure isobar map**: atmospheric cross-section data for contour rendering
+
 ### Watch List
 | Item | Area |
 |------|------|

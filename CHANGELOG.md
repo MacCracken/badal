@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [1.1.0]
+
+### Added
+- **bridge** — cross-crate primitive-value bridges for pavan (ISA atmosphere, viscosity, wind profile), goonj (speed of sound, absorption), prakash (Rayleigh scale, cloud cover to radiation split), vanaspati (growing conditions, frost risk)
+- **integration/soorat** — feature-gated `soorat-compat` module with visualization data structures: `CloudField` (layers with altitude, coverage, type), `WindVectorField` (2D/3D velocity grid), `PrecipitationMap` (intensity grid with type), `AtmosphericSection` (ISA temperature/pressure cross-section)
+
+### Updated
+- hisab 1.1.0 -> 1.3.0, ushma 1.0.0 -> 1.2.0, pravash 1.1.0 -> 1.2.0, zerocopy 0.8.47 -> 0.8.48
+
 ## [1.0.0] - 2026-03-26
 
 Stable release. All pre-1.0 milestones complete.
